@@ -3,11 +3,13 @@ from dotenv import load_dotenv
 from langchain_community.documents_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
+from langchain_community.vectorstores import Chroma
 
 load_dotenv()
 
 DATA_PATH = "data/"
 PDF_FILENAME = "llama2.pdf"
+CHROMA_PATH = "chroma_db" # Directory to store ChromaDB data
 
 def load_documents():
 	"""Loads documents from specified data path"""
@@ -34,4 +36,16 @@ def get_embedding_function(model_name="nomic-embed-text"):
 	embeddings = OllamaEmbeddings(model=model_name)
 	print(f"Initialized Ollama embeddings with model: {model_name}")
 	return embeddings
+
+def get_vectore_store(embedding_function, persist_directory=CHROMA_PATH):
+	"""Initializes or loads the Chroma vector store."""
+	vectorestore = Chroma(
+		persist_directory=persist_directory,
+		embedding_function=embedding_function
+	)
+	print(f"Vector store initialized/loaded from: {persist_directory}")
+	print vectorestore
+
+embedding_function = get_embedding_function()
+vectore_store = get_vectore_store(embedding_function)
 
