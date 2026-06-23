@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from langchain_community.documents_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_ollama import OllamaEmbeddings
 
 load_dotenv()
 
@@ -27,3 +28,10 @@ def split_documents(documents):
 	all_splits = text_splitter.split_documents(documents)
 	print(f"Split into {len(all_splits)} chunks")
 	return all_splits
+
+def get_embedding_function(model_name="nomic-embed-text"):
+	"""Initializes the Ollama embedding function."""
+	embeddings = OllamaEmbeddings(model=model_name)
+	print(f"Initialized Ollama embeddings with model: {model_name}")
+	return embeddings
+
