@@ -1,26 +1,26 @@
 import os
 from dotenv import load_dotenv
-from langchain_community.documents_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
 from langchain_community.vectorstores import Chroma
 
-load_dotenv()
+load_dotenv()  # loads env variables from .env file
 
 DATA_PATH = "data/"
 PDF_FILENAME = "llama2.pdf"
-CHROMA_PATH = "chroma_db" # Directory to store ChromaDB data
+CHROMA_PATH = "chroma_db"  # Directory to store ChromaDB data
 
 def load_documents():
 	"""Loads documents from specified data path"""
 	pdf_path = os.path.join(DATA_PATH, PDF_FILENAME)
 	loader = PyPDFLoader(pdf_path)
 	documents = loader.load()
-	print(f"Loaded {len(documents)} pages(s) from {path_path}"
+	print(f"Loaded {len(documents)} pages(s) from {pdf_path}")
 	return documents
 
 def split_documents(documents):
-	"""Splits documents into smaller chungs."""
+	"""Splits documents into smaller chunks."""
 	text_splitter = RecursiveCharacterTextSplitter(
 	chunck_size=1000,
 	chunk_overlap=200,
@@ -33,6 +33,7 @@ def split_documents(documents):
 
 def get_embedding_function(model_name="nomic-embed-text"):
 	"""Initializes the Ollama embedding function."""
+	# Ensure Ollama server is running (via ollama serve)
 	embeddings = OllamaEmbeddings(model=model_name)
 	print(f"Initialized Ollama embeddings with model: {model_name}")
 	return embeddings
@@ -44,7 +45,12 @@ def get_vectore_store(embedding_function, persist_directory=CHROMA_PATH):
 		embedding_function=embedding_function
 	)
 	print(f"Vector store initialized/loaded from: {persist_directory}")
-	print vectorestore
+	return vectorestore
+
+
+# loaded_docs = load_documents()
+# chunks = split_documents(loaded_docs) # Call this later
+# embedding_function = get_embedding_function() # Call this later
 
 embedding_function = get_embedding_function()
 vectore_store = get_vectore_store(embedding_function)
