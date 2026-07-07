@@ -4,6 +4,10 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
 from langchain_community.vectorstores import Chroma
+from langchain_ollama import ChatOllama
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
 
 load_dotenv()  # loads env variables from .env file
 
@@ -64,10 +68,53 @@ def index_documents(chunks, embedding_function, persist_directory=CHROMA_PATH):
 	print(f"/Indexing complete. Data saved to: {persist_directory}")
 	return vectore_store
 
+
+def create_rag_chain(vector_store, llm_model_name="qwen3:8b", context_window=8192):
+	"""Ceates the RAG chain."""
+	# Initialize the LLM
+	llm = ChatOllama(
+		model=llm_model_name,
+		temperatur=0, # Lower temperatur for more factual RAG answers
+		num_ctx=context_window
+	)
+	print(f"Initalized ChatOllama with model: {llm_model_name}, context window: {context_window}")
+
+	# Create the retriever
+	retriever = vector_store.as_retriver(
+		search_type="similarity",
+		search_kwargs={'k': 3} # trieve top 3 relevant chunks
+	)
+
+	print("Retriever initialized.")
+
+	# Define the prompt template
+	template = """Answer the questin based ONLY on the following context: {context}
+	
+	Question: {question}
+	"""
+	prompt = ChatPromptTemplate.from_template(template)
+	print("Prompt template created.")
+
+	# Define the RAG chain using LCEL
+	rag_chain = ({"context": retriever, "question": RunnablePassthrough()}
+	| prompt
+	| llm
+	| StrOutputParser()
+	)
+	print("RAG chain created.")
+	return rag_chain
+
 loaded_docs = load_documents()
 chunks = split_documents(loaded_docs)
 
 embedding_function = get_embedding_function()
 vectore_store = get_vectore_store(embedding_function)
-vectore_store = index_documents(chunks, embedding_function)
+vector_store = index_documents(chunks, embedding_function)
+rag_chain = create_rag_chain(vector_store)
 
+"""
+Note: loading an existing db: 
+embedding_function = get_embedding_function()
+vector_store = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
+
+"""
