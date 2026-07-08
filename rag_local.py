@@ -104,13 +104,42 @@ def create_rag_chain(vector_store, llm_model_name="qwen3:8b", context_window=819
 	print("RAG chain created.")
 	return rag_chain
 
-loaded_docs = load_documents()
-chunks = split_documents(loaded_docs)
 
-embedding_function = get_embedding_function()
-vectore_store = get_vectore_store(embedding_function)
-vector_store = index_documents(chunks, embedding_function)
-rag_chain = create_rag_chain(vector_store)
+def query_rag(chain, question):
+	"""Queries the RAG chain and prints the response"""
+	print("\nQuerying the RAG chain...")
+	print(f"Question: {question}")
+	response = chain.invoke(question)
+	print("\nResponse: ")
+	print(response)
+
+
+# ----- Main Execution -----
+if __name__ == "__main__":
+	# 1. Load Documents:
+	docs = load_documents()
+
+	# 2. Splict Documents
+	chunk = split_documents(docs)
+
+	# 3. Get Embedding Function
+	embedding_function = get_embedding_function()
+
+	# 4. Index Documents (Only needs to be done once per document set)
+	# Check if DB exists, if not -> index.
+	print("Attempting to index documents ...")
+	vector_store = index_documents(chunk, embedding_function)
+	# to load existing DB instead:
+	# vector_store = get_vector(embeding_function)
+
+	# 5. Create a RAG Chain
+	rag_chain = create_rag_chain(vector_store, llm_model_name="qwen3:8b")
+
+	# 6. Query
+	query_question = "Summarize the documents in not more than 10 sentence"
+	query_rag(rag_chain, query_question)
+
+
 
 """
 Note: loading an existing db: 
