@@ -1,24 +1,25 @@
 import os
 from dotenv import load_dotenv
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_opendataloader_pdf import OpenDataLoaderPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
-from langchain_community.vectorstores import Chroma
 from langchain_ollama import ChatOllama
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate # todo: checkout langchain_core as well!!! ca
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from langchain_chroma import Chroma
+
 
 load_dotenv()  # loads env variables from .env file
 
 DATA_PATH = "data/"
-PDF_FILENAME = "llama2.pdf"
+PDF_FILENAME = "hair_care_practices.pdf"
 CHROMA_PATH = "chroma_db"  # Directory to store ChromaDB data
 
 def load_documents():
 	"""Loads documents from specified data path"""
 	pdf_path = os.path.join(DATA_PATH, PDF_FILENAME)
-	loader = PyPDFLoader(pdf_path)
+	loader = OpenDataLoaderPDFLoader(file_path=pdf_path, format="text")
 	documents = loader.load()
 	print(f"Loaded {len(documents)} pages(s) from {pdf_path}")
 	return documents
@@ -26,7 +27,7 @@ def load_documents():
 def split_documents(documents):
 	"""Splits documents into smaller chunks."""
 	text_splitter = RecursiveCharacterTextSplitter(
-	chunck_size=1000,
+	chunk_size=1000,
 	chunk_overlap=200,
 	length_function=len,
 	is_separator_regex=False,
@@ -44,12 +45,14 @@ def get_embedding_function(model_name="nomic-embed-text"):
 
 def get_vectore_store(embedding_function, persist_directory=CHROMA_PATH):
 	"""Initializes or loads the Chroma vector store."""
-	vectorestore = Chroma(
-		persist_directory=persist_directory,
-		embedding_function=embedding_function
+	vector_store = Chroma(
+		collection_name="example_collection",
+		embedding_function=embedding_function,
+		persist_directory=persist_directory,  # Where to save data locally, remove if not necessary
 	)
+
 	print(f"Vector store initialized/loaded from: {persist_directory}")
-	return vectorestore
+	return vector_store
 
 def index_documents(chunks, embedding_function, persist_directory=CHROMA_PATH):
 	""" Indexes document chunks into the Chroma vector store."""
@@ -61,16 +64,14 @@ def index_documents(chunks, embedding_function, persist_directory=CHROMA_PATH):
 	vectore_store = Chroma.from_documents(
 		documents=chunks,
 		embedding=embedding_function,
-		persist_directory=persist_directory
+		#persist_directory=persist_directory
 	)
-
-	vectore_store.persist() # Ensure data is saved
 	print(f"/Indexing complete. Data saved to: {persist_directory}")
 	return vectore_store
 
 
 def create_rag_chain(vector_store, llm_model_name="qwen3:8b", context_window=8192):
-	"""Ceates the RAG chain."""
+	"""Creates the RAG chain."""
 	# Initialize the LLM
 	llm = ChatOllama(
 		model=llm_model_name,
@@ -80,15 +81,15 @@ def create_rag_chain(vector_store, llm_model_name="qwen3:8b", context_window=819
 	print(f"Initalized ChatOllama with model: {llm_model_name}, context window: {context_window}")
 
 	# Create the retriever
-	retriever = vector_store.as_retriver(
+	retriever = vector_store.as_retriever(
 		search_type="similarity",
-		search_kwargs={'k': 3} # trieve top 3 relevant chunks
+		search_kwargs={'k': 3}  # trieve top 3 relevant chunks
 	)
 
 	print("Retriever initialized.")
 
 	# Define the prompt template
-	template = """Answer the questin based ONLY on the following context: {context}
+	template = """Answer the question based ONLY on the following context: {context}
 	
 	Question: {question}
 	"""
@@ -119,7 +120,7 @@ if __name__ == "__main__":
 	# 1. Load Documents:
 	docs = load_documents()
 
-	# 2. Splict Documents
+	# 2. Split Documents
 	chunk = split_documents(docs)
 
 	# 3. Get Embedding Function
@@ -136,7 +137,7 @@ if __name__ == "__main__":
 	rag_chain = create_rag_chain(vector_store, llm_model_name="qwen3:8b")
 
 	# 6. Query
-	query_question = "Summarize the documents in not more than 10 sentence"
+	query_question = "Summarize the document in not more than 5 sentence"
 	query_rag(rag_chain, query_question)
 
 
